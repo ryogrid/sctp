@@ -218,7 +218,7 @@ func (s *Stream) handleForwardTSNForOrdered(ssn uint16) {
 
 	func() {
 		s.lock.Lock()
-		defer s.lock.Unlock()
+		//defer s.lock.Unlock()
 
 		s.readNotifier.L.Lock()
 		if s.unordered {
@@ -235,9 +235,11 @@ func (s *Stream) handleForwardTSNForOrdered(ssn uint16) {
 	if readable {
 		s.readNotifier.Signal()
 		s.readNotifier.L.Unlock()
+		s.lock.Unlock()
 		return
 	}
 	s.readNotifier.L.Unlock()
+	s.lock.Unlock()
 }
 
 func (s *Stream) handleForwardTSNForUnordered(newCumulativeTSN uint32) {
@@ -245,7 +247,7 @@ func (s *Stream) handleForwardTSNForUnordered(newCumulativeTSN uint32) {
 
 	func() {
 		s.lock.Lock()
-		defer s.lock.Unlock()
+		//defer s.lock.Unlock()
 
 		s.readNotifier.L.Lock()
 		if !s.unordered {
@@ -262,9 +264,11 @@ func (s *Stream) handleForwardTSNForUnordered(newCumulativeTSN uint32) {
 	if readable {
 		s.readNotifier.Signal()
 		s.readNotifier.L.Unlock()
+		s.lock.Unlock()
 		return
 	}
 	s.readNotifier.L.Unlock()
+	s.lock.Unlock()
 }
 
 // Write writes len(p) bytes from p with the default Payload Protocol Identifier
