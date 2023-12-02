@@ -144,7 +144,8 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
-		s.readNotifier.Wait()
+		//s.readNotifier.Wait()
+		time.Sleep(1 * time.Millisecond)
 	}
 }
 
