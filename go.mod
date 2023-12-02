@@ -1,4 +1,4 @@
-module github.com/pion/sctp
+module github.com/ryogrid/sctp
 
 require (
 	github.com/kr/pretty v0.1.0 // indirect
