@@ -144,6 +144,7 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 
 		err = s.readErr
 		if err != nil {
+			s.readNotifier.L.Unlock()
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
