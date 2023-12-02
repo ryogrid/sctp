@@ -131,6 +131,7 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 		}
 	}()
 
+	s.readNotifier.L.Lock()
 	for {
 		n, ppi, err := s.reassemblyQueue.read(p)
 		if err == nil {
@@ -147,10 +148,7 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
-		//s.readNotifier.Wait()
-		s.lock.Unlock()
-		time.Sleep(1 * time.Millisecond)
-		s.lock.Lock()
+		s.readNotifier.Wait()
 	}
 }
 
