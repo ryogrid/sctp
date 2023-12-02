@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
 // SPDX-License-Identifier: MIT
 
+//go:build pong
 // +build pong
 
 package main
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"github.com/pion/logging"
-	"github.com/pion/sctp"
+	"github.com/ryogrid/sctp"
 )
 
 func main() {

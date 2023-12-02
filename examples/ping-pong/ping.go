@@ -12,7 +12,7 @@ import (
 	"net"
 
 	"github.com/pion/logging"
-	"github.com/pion/sctp"
+	"github.com/ryogrid/sctp"
 )
 
 func main() {
