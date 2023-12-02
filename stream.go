@@ -135,15 +135,18 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 	for {
 		n, ppi, err := s.reassemblyQueue.read(p)
 		if err == nil {
+			s.readNotifier.L.Unlock()
 			s.lock.Unlock()
 			return n, ppi, nil
 		} else if errors.Is(err, io.ErrShortBuffer) {
+			s.readNotifier.L.Unlock()
 			s.lock.Unlock()
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
 		err = s.readErr
 		if err != nil {
+			s.readNotifier.L.Unlock()
 			s.lock.Unlock()
 			return 0, PayloadProtocolIdentifier(0), err
 		}
