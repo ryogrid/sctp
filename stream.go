@@ -121,7 +121,7 @@ func (s *Stream) Read(p []byte) (int, error) {
 // otherwise.
 func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 	s.lock.Lock()
-	defer s.lock.Unlock()
+	//defer s.lock.Unlock()
 
 	defer func() {
 		// close readTimeoutCancel if the current read timeout routine is no longer effective
@@ -134,18 +134,23 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 	for {
 		n, ppi, err := s.reassemblyQueue.read(p)
 		if err == nil {
+			s.lock.Unlock()
 			return n, ppi, nil
 		} else if errors.Is(err, io.ErrShortBuffer) {
+			s.lock.Unlock()
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
 		err = s.readErr
 		if err != nil {
+			s.lock.Unlock()
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
 		//s.readNotifier.Wait()
+		s.lock.Unlock()
 		time.Sleep(1 * time.Millisecond)
+		s.lock.Lock()
 	}
 }
 
