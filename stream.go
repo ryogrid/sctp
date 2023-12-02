@@ -131,11 +131,14 @@ func (s *Stream) ReadSCTP(p []byte) (int, PayloadProtocolIdentifier, error) {
 		}
 	}()
 
+	s.readNotifier.L.Lock()
 	for {
 		n, ppi, err := s.reassemblyQueue.read(p)
 		if err == nil {
+			s.readNotifier.L.Unlock()
 			return n, ppi, nil
 		} else if errors.Is(err, io.ErrShortBuffer) {
+			s.readNotifier.L.Unlock()
 			return 0, PayloadProtocolIdentifier(0), err
 		}
 
@@ -176,13 +179,14 @@ func (s *Stream) SetReadDeadline(deadline time.Time) error {
 				return
 			case <-t.C:
 				s.lock.Lock()
+				s.readNotifier.L.Lock()
 				if s.readErr == nil {
 					s.readErr = ErrReadDeadlineExceeded
 				}
 				s.readTimeoutCancel = nil
-				s.lock.Unlock()
-
 				s.readNotifier.Signal()
+				s.readNotifier.L.Unlock()
+				s.lock.Unlock()
 			}
 		}(s.readTimeoutCancel)
 	}
@@ -194,6 +198,7 @@ func (s *Stream) handleData(pd *chunkPayloadData) {
 	defer s.lock.Unlock()
 
 	var readable bool
+	s.readNotifier.L.Lock()
 	if s.reassemblyQueue.push(pd) {
 		readable = s.reassemblyQueue.isReadable()
 		s.log.Debugf("[%s] reassemblyQueue readable=%v", s.name, readable)
@@ -201,8 +206,11 @@ func (s *Stream) handleData(pd *chunkPayloadData) {
 			s.log.Debugf("[%s] readNotifier.signal()", s.name)
 			s.readNotifier.Signal()
 			s.log.Debugf("[%s] readNotifier.signal() done", s.name)
+			s.readNotifier.L.Unlock()
+			return
 		}
 	}
+	s.readNotifier.L.Unlock()
 }
 
 func (s *Stream) handleForwardTSNForOrdered(ssn uint16) {
@@ -212,6 +220,7 @@ func (s *Stream) handleForwardTSNForOrdered(ssn uint16) {
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
+		s.readNotifier.L.Lock()
 		if s.unordered {
 			return // unordered chunks are handled by handleForwardUnordered method
 		}
@@ -225,7 +234,10 @@ func (s *Stream) handleForwardTSNForOrdered(ssn uint16) {
 	// Notify the reader asynchronously if there's a data chunk to read.
 	if readable {
 		s.readNotifier.Signal()
+		s.readNotifier.L.Unlock()
+		return
 	}
+	s.readNotifier.L.Unlock()
 }
 
 func (s *Stream) handleForwardTSNForUnordered(newCumulativeTSN uint32) {
@@ -235,6 +247,7 @@ func (s *Stream) handleForwardTSNForUnordered(newCumulativeTSN uint32) {
 		s.lock.Lock()
 		defer s.lock.Unlock()
 
+		s.readNotifier.L.Lock()
 		if !s.unordered {
 			return // ordered chunks are handled by handleForwardTSNOrdered method
 		}
@@ -248,7 +261,10 @@ func (s *Stream) handleForwardTSNForUnordered(newCumulativeTSN uint32) {
 	// Notify the reader asynchronously if there's a data chunk to read.
 	if readable {
 		s.readNotifier.Signal()
+		s.readNotifier.L.Unlock()
+		return
 	}
+	s.readNotifier.L.Unlock()
 }
 
 // Write writes len(p) bytes from p with the default Payload Protocol Identifier
@@ -450,8 +466,10 @@ func (s *Stream) onInboundStreamReset() {
 	//	reset, it also resets its corresponding outgoing stream.  Once this
 	//	is completed, the data channel is closed.
 
+	s.readNotifier.L.Lock()
 	s.readErr = io.EOF
 	s.readNotifier.Broadcast()
+	s.readNotifier.L.Unlock()
 
 	if s.state == StreamStateClosing {
 		s.log.Debugf("[%s] state change: closing => closed", s.name)

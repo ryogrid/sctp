@@ -605,9 +605,11 @@ func (a *Association) unregisterStream(s *Stream, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	s.readNotifier.L.Lock()
 	delete(a.streams, s.streamIdentifier)
 	s.readErr = err
 	s.readNotifier.Broadcast()
+	s.readNotifier.L.Unlock()
 }
 
 // handleInbound parses incoming raw packets
